@@ -80,7 +80,7 @@ void ResidualBlockInfo::Evaluate()
 MarginalizationInfo::~MarginalizationInfo()
 {
     //ROS_WARN("release marginlizationinfo");
-    
+
     for (auto it = parameter_block_data.begin(); it != parameter_block_data.end(); ++it)
         delete it->second;
 
@@ -88,7 +88,7 @@ MarginalizationInfo::~MarginalizationInfo()
     {
 
         delete[] factors[i]->raw_jacobians;
-        
+
         delete factors[i]->cost_function;
 
         delete factors[i];
@@ -147,9 +147,9 @@ int MarginalizationInfo::globalSize(int size) const
     return size == 6 ? 7 : size;
 }
 
-void* ThreadsConstructA(void* threadsstruct)
+void *ThreadsConstructA(void *threadsstruct)
 {
-    ThreadsStruct* p = ((ThreadsStruct*)threadsstruct);
+    ThreadsStruct *p = ((ThreadsStruct *)threadsstruct);
     for (auto it : p->sub_factors)
     {
         for (int i = 0; i < static_cast<int>(it->parameter_blocks.size()); i++)
@@ -185,24 +185,24 @@ void MarginalizationInfo::marginalize()
     int pos = 0;
     for (auto &it : parameter_block_idx)
     {
-        it.second = pos;
+        it.second = pos; // index in Hessian
         pos += localSize(parameter_block_size[it.first]);
-    }
+    } // needs to be marginalized.
 
-    m = pos;
+    m = pos; // marg-drop dimension
 
     for (const auto &it : parameter_block_size)
     {
         if (parameter_block_idx.find(it.first) == parameter_block_idx.end())
         {
             parameter_block_idx[it.first] = pos;
-            pos += localSize(it.second);
+            pos += localSize(it.second); // Hessian dimension
         }
     }
 
-    n = pos - m;
+    n = pos - m; // to-keep dimension
     //ROS_INFO("marginalization, pos: %d, m: %d, n: %d, size: %d", pos, m, n, (int)parameter_block_idx.size());
-    if(m == 0)
+    if (m == 0)
     {
         valid = false;
         printf("unstable tracking...\n");
@@ -242,7 +242,6 @@ void MarginalizationInfo::marginalize()
     */
     //multi thread
 
-
     TicToc t_thread_summing;
     pthread_t tids[NUM_THREADS];
     ThreadsStruct threadsstruct[NUM_THREADS];
@@ -256,26 +255,25 @@ void MarginalizationInfo::marginalize()
     for (int i = 0; i < NUM_THREADS; i++)
     {
         TicToc zero_matrix;
-        threadsstruct[i].A = Eigen::MatrixXd::Zero(pos,pos);
+        threadsstruct[i].A = Eigen::MatrixXd::Zero(pos, pos);
         threadsstruct[i].b = Eigen::VectorXd::Zero(pos);
         threadsstruct[i].parameter_block_size = parameter_block_size;
         threadsstruct[i].parameter_block_idx = parameter_block_idx;
-        int ret = pthread_create( &tids[i], NULL, ThreadsConstructA ,(void*)&(threadsstruct[i]));
+        int ret = pthread_create(&tids[i], NULL, ThreadsConstructA, (void *)&(threadsstruct[i]));
         if (ret != 0)
         {
             ROS_WARN("pthread_create error");
             ROS_BREAK();
         }
     }
-    for( int i = NUM_THREADS - 1; i >= 0; i--)  
+    for (int i = NUM_THREADS - 1; i >= 0; i--)
     {
-        pthread_join( tids[i], NULL ); 
+        pthread_join(tids[i], NULL);
         A += threadsstruct[i].A;
         b += threadsstruct[i].b;
     }
     //ROS_DEBUG("thread summing up costs %f ms", t_thread_summing.toc());
     //ROS_INFO("A diff %f , b diff %f ", (A - tmp_A).sum(), (b - tmp_b).sum());
-
 
     //TODO
     Eigen::MatrixXd Amm = 0.5 * (A.block(0, 0, m, m) + A.block(0, 0, m, m).transpose());
@@ -332,7 +330,7 @@ std::vector<double *> MarginalizationInfo::getParameterBlocks(std::unordered_map
     return keep_block_addr;
 }
 
-MarginalizationFactor::MarginalizationFactor(MarginalizationInfo* _marginalization_info):marginalization_info(_marginalization_info)
+MarginalizationFactor::MarginalizationFactor(MarginalizationInfo *_marginalization_info) : marginalization_info(_marginalization_info)
 {
     int cnt = 0;
     for (auto it : marginalization_info->keep_block_size)

@@ -49,13 +49,13 @@ struct ThreadsStruct
     Eigen::MatrixXd A;
     Eigen::VectorXd b;
     std::unordered_map<long, int> parameter_block_size; //global size
-    std::unordered_map<long, int> parameter_block_idx; //local size
+    std::unordered_map<long, int> parameter_block_idx;  //local size
 };
 
 class MarginalizationInfo
 {
-  public:
-    MarginalizationInfo(){valid = true;};
+public:
+    MarginalizationInfo() { valid = true; };
     ~MarginalizationInfo();
     int localSize(int size) const;
     int globalSize(int size) const;
@@ -65,7 +65,8 @@ class MarginalizationInfo
     std::vector<double *> getParameterBlocks(std::unordered_map<long, double *> &addr_shift);
 
     std::vector<ResidualBlockInfo *> factors;
-    int m, n;
+    int m, n;                                           // m: dimension to marg-drop
+                                                        // n: dimension to keep
     std::unordered_map<long, int> parameter_block_size; //global size
     int sum_block_size;
     std::unordered_map<long, int> parameter_block_idx; //local size
@@ -79,14 +80,13 @@ class MarginalizationInfo
     Eigen::VectorXd linearized_residuals;
     const double eps = 1e-8;
     bool valid;
-
 };
 
 class MarginalizationFactor : public ceres::CostFunction
 {
-  public:
-    MarginalizationFactor(MarginalizationInfo* _marginalization_info);
+public:
+    MarginalizationFactor(MarginalizationInfo *_marginalization_info);
     virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
 
-    MarginalizationInfo* marginalization_info;
+    MarginalizationInfo *marginalization_info;
 };
